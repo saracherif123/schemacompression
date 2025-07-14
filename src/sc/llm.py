@@ -6,6 +6,7 @@ Created on Sep 8, 2023
 import openai
 import tiktoken
 import time
+import os
 
 
 def nr_tokens(model, text):
@@ -26,13 +27,17 @@ def nr_tokens(model, text):
 class LLM():
     """ Represents large language model. """
     
-    def __init__(self, name):
+    def __init__(self, name, api_key=None):
         """ Initializes for OpenAI model.
         
         Args:
             name: name of OpenAI model.
+            api_key: OpenAI API key (optional, will use env var if not provided)
         """
         self.name = name
+        if api_key is None:
+            api_key = os.environ.get("OPENAI_API_KEY")
+        self.client = openai.OpenAI(api_key=api_key)
 
     def __call__(self, prompt):
         """ Retrieves answer from LLM. 
@@ -45,13 +50,14 @@ class LLM():
         """
         for retry_nr in range(1, 4):
             try:
-                response = openai.ChatCompletion.create(
+                response = self.client.chat.completions.create(
                     model=self.name,
                     messages=[
                         {'role':'user', 'content':prompt}
                         ]
                     )
-                return response['choices'][0]['message']['content']
-            except:
+                return response.choices[0].message.content
+            except Exception as e:
+                print("OpenAI API error:", e)
                 time.sleep(2 * retry_nr)
         raise Exception('Cannot reach OpenAI model!')

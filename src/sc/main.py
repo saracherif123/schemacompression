@@ -51,8 +51,10 @@ if __name__ == '__main__':
         uncompressed = split.text()
         split.merge_columns()
         ilpCompression = sc.compress.gurobi.IlpCompression(
-            split, llm_name=model, max_depth=3, 
-            context_k=10, short2text=short2text,
+            split, True, True, True,  # start, hints, merge
+            max_depth=3,
+            llm_name=model,
+            context_k=10,
             timeout_s=3*60)
         compressed = ilpCompression.compress()
         print('Uncompressed:')
@@ -108,3 +110,28 @@ if __name__ == '__main__':
     # query_2 = tosql2.translate(question)
     # print(query_1)
     # print(query_2)
+
+    # TPC-H schema processing
+    with open("benchmarks/tpch/schema.sql") as f:
+        tpch_ddl = f.read()
+    
+    schema_parser = sc.parser.SchemaParser()
+    schema = schema_parser.parse(tpch_ddl)
+    original = schema.text()
+    compressed = sc.compress.types.compress_schema(schema)
+    original_length = sc.llm.nr_tokens(model, original)
+    compressed_length = sc.llm.nr_tokens(model, compressed)
+    print(original)
+    print(compressed)
+    print(f'Original length: \t{original_length}')
+    print(f'Compressed length: \t{compressed_length}')
+
+    # Instantiate the LLM callable
+    llm = sc.llm.LLM(model)
+    tosql1 = sc.translate.Translator(llm, original)
+    tosql2 = sc.translate.Translator(llm, compressed)
+    question = "Show name, country, age for all singers ordered by age from the oldest to the youngest."
+    query_1 = tosql1.translate(question)
+    query_2 = tosql2.translate(question)
+    print(query_1)
+    print(query_2)

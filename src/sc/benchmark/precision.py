@@ -5,7 +5,8 @@ Created on Jan 15, 2024
 '''
 import argparse
 import json
-import openai
+from openai import OpenAI
+
 import pathlib
 import sqlite3
 import time
@@ -13,12 +14,13 @@ import time
 from pathlib import Path
 
 
-def text_to_sql(schema, question):
+def text_to_sql(schema, question, client):
     """ Translate question to SQL query.
     
     Args:
         schema: text description of schema.
         question: translate this question.
+        client: OpenAI client instance.
     
     Returns:
         an SQL query translating the question.
@@ -26,14 +28,15 @@ def text_to_sql(schema, question):
     prompt = f'Schema:{schema}\nQuestion:{question}\nSQL:'
     for nr_retries in range(1, 4):
         try:
-            response = openai.ChatCompletion.create(
+            response = client.chat.completions.create(
                 model='gpt-3.5-turbo',
                 messages=[
                     {'role':'user', 'content':prompt}
                     ]
                 )
-            return response['choices'][0]['message']['content']
-        except:
+            return response.choices[0].message.content
+        except Exception as e:
+            print("OpenAI API error:", e)
             time.sleep(nr_retries * 2)
     raise Exception('Cannot translate query!')
 
@@ -63,26 +66,18 @@ def result_is_empty(db_path, sql):
 
     
 def validate(db_path, gold_sql, sql):
-    """ Ensure that two queries yield the same result.
-    
-    Args:
-        db_path: path to SQLite database.
-        gold_sql: ground truth SQL query.
-        sql: possibly equivalent SQL query.
-    
-    Returns:
-        True iff both input queries yield the same result.
-    """
+    """ Ensure that two queries yield the same result. """
+    gold_sql = gold_sql.rstrip(';')
+    sql = sql.rstrip(';')
     sql_1 = f'{gold_sql} except {sql}'
     sql_2 = f'{sql} except {gold_sql}'
     count_sql = f'select count(*) from ({sql})'
     count_gold = f'select count(*) from ({gold_sql})'
     sql_3 = f'{count_sql} except {count_gold}'
     
-    for sql in [sql_1, sql_2, sql_3]:
-        if not result_is_empty(db_path, sql):
+    for query in [sql_1, sql_2, sql_3]:
+        if not result_is_empty(db_path, query):
             return False
-    
     return True
 
 
@@ -98,7 +93,7 @@ def nlqi_success(schema, question, gold_sql, db_path):
     Returns:
         True iff translated query seems correct.
     """
-    sql = text_to_sql(schema, question)
+    sql = text_to_sql(schema, question, client)
     success = validate(db_path, gold_sql, sql)
     print(f'Success: {success}')
     return success
@@ -115,12 +110,14 @@ if __name__ == '__main__':
     parser.add_argument('ai_key', type=str, help='OpenAI access key')
     parser.add_argument('outpath', type=str, help='Path to result file')
     args = parser.parse_args()
+
+    from openai import OpenAI
+    client = OpenAI(api_key=args.ai_key)
     
     with open(args.schemas) as file:
         schemas = json.load(file)
     with open(args.queries) as file:
         queries = json.load(file)
-    openai.api_key = args.ai_key
 
     db2original = {}
     db2compressed = {}

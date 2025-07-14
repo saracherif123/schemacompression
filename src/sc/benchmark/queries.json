@@ -1,0 +1,7 @@
+[
+  {
+    "db_id": "tpch",
+    "question": "Show the names and account balances of customers from the nation 'UNITED STATES' with a balance greater than 1000.",
+    "query": "SELECT c_name, c_acctbal FROM customer JOIN nation ON customer.c_nationkey = nation.n_nationkey WHERE nation.n_name = 'UNITED STATES' AND c_acctbal > 1000;"
+  }
+]

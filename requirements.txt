@@ -1,0 +1,6 @@
+openai
+tiktoken
+gurobipy
+sqlglot
+pandas 
+scikit-learn
