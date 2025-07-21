@@ -116,6 +116,11 @@ if __name__ == '__main__':
     
     with open(args.schemas) as file:
         schemas = json.load(file)
+    print("DEBUG: loaded schemas type:", type(schemas))
+    if isinstance(schemas, list):
+        print("DEBUG: first element keys:", schemas[0].keys())
+    else:
+        print("DEBUG: dict keys:", schemas.keys())
     with open(args.queries) as file:
         queries = json.load(file)
 

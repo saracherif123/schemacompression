@@ -10,6 +10,7 @@ import sc.parser
 import sc.compress.greedy
 import sc.compress.gurobi
 import sc.llm
+import sc.compress.simple
 import time
 
 
@@ -134,6 +135,12 @@ def solver_promptbase(ddl, **kwargs):
     return {'solution':solution}
 
 
+def solver_simple(ddl, **kwargs):
+    """ Compress schema to only table and column names (no types/constraints). """
+    solution = sc.compress.simple.strip_types_and_constraints(ddl)
+    return {'solution': solution}
+
+
 def read_schemata(input_path):
     """ Returns list of schemata read from disk.
     
@@ -148,10 +155,10 @@ def read_schemata(input_path):
     input_dir = pathlib.Path(input_path)
     for file_name in input_dir.iterdir():
         if str(file_name).endswith('.sql'):
-            file_path = input_dir.joinpath(file_name)
-            print(f'Reading file {file_path} ...')
-            file_names.append(str(file_name))
-            with open(file_path) as file:
+            # file_name is already a Path object with full path
+            print(f'Reading file {file_name} ...')
+            file_names.append(str(file_name.name))
+            with open(file_name) as file:
                 ddl = file.read()
                 ddls.append(ddl)
     
@@ -186,9 +193,11 @@ if __name__ == '__main__':
         pretty_result = benchmark(ddl, solver_pretty)
         greedy_result = benchmark(ddl, solver_greedy)
         prompt_result = benchmark(ddl, solver_promptbase)
+        simple_result = benchmark(ddl, solver_simple)
         result = {
             'file_name':file_name, 'greedy':greedy_result, 
-            'pretty':pretty_result, 'prompt':prompt_result}
+            'pretty':pretty_result, 'prompt':prompt_result,
+            'simple': simple_result}
 
         if not args.noilp:
             gurobi_args = {
