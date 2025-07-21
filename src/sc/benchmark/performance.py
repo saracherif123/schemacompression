@@ -136,7 +136,6 @@ def solver_promptbase(ddl, **kwargs):
 
 
 def solver_simple(ddl, **kwargs):
-    """ Compress schema to only table and column names (no types/constraints). """
     solution = sc.compress.simple.strip_types_and_constraints(ddl)
     return {'solution': solution}
 
@@ -195,10 +194,12 @@ if __name__ == '__main__':
         prompt_result = benchmark(ddl, solver_promptbase)
         simple_result = benchmark(ddl, solver_simple)
         result = {
-            'file_name':file_name, 'greedy':greedy_result, 
-            'pretty':pretty_result, 'prompt':prompt_result,
-            'simple': simple_result}
-
+            'file_name': file_name,
+            'greedy': greedy_result,
+            'pretty': pretty_result,
+            'prompt': prompt_result,
+            'simple': simple_result
+        }
         if not args.noilp:
             gurobi_args = {
                 'llm_name':model, 'timeout_s':args.timeout_s, 
@@ -206,8 +207,6 @@ if __name__ == '__main__':
                 'merge':not args.nomerge}
             gurobi_result = benchmark(ddl, solver_gurobi, **gurobi_args)
             result['gurobi'] = gurobi_result
-        
         results.append(result)
-        
         with open(args.outpath, 'w') as file:
             json.dump(results, file)
